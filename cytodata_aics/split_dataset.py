@@ -103,4 +103,21 @@ def generate_dataset(train_frac=0.7, val_frac=0.2, seed=42):
     df = pd.read_parquet("s3://allencell-hipsc-cytodata/hackathon_manifest_17oct2022.parquet")
     print(f'Number of cells: {len(df)}')
     print(f'Number of columns: {len(df.columns)}')
-    return split_dataframe_with_seed(df, train_frac=0.7, val_frac=0.2, seed=42)
+    data_frame = split_dataframe_with_seed(df, train_frac=0.7, val_frac=0.2, seed=42)
+
+    # M0               2000
+    # M1M2             2000
+    # M4M5             2000
+    # M6M7_complete    1198
+    # M3                981
+
+    CLASS_DICT = {
+        "M0": 0,
+        "M1M2": 1,
+        "M3": 2,
+        "M4M5": 3,
+        "M6M7_complete": 4,
+    }
+    data_frame['cell_stage_code'] = data_frame['cell_stage'].map(CLASS_DICT)
+    print(data_frame['cell_stage_code'].value_counts())
+    return data_frame
