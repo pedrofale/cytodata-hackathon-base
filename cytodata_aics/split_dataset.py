@@ -90,11 +90,11 @@ def split_dataframe_with_seed(df, train_frac, val_frac, seed):
     df_mitocells = df_mitocells.drop(df_mitocells[df_mitocells['cell_stage']=='M6M7_single'].index)
 
     # Add the train, test and validate split
-    df_mitocells = split_dataframe_(dataframe=df, train_frac=train_frac, val_frac=val_frac, return_splits=False, seed=seed)
+    df_mitocells = split_dataframe_(dataframe=df_mitocells, train_frac=train_frac, val_frac=val_frac, return_splits=False, seed=seed)
 
-    df_mitocells.to_csv("/home/aicsuser/serotiny_data/mitocells.csv") 
-    print(f"Number of cells: {len(df)}")
-    print(f"Number of columns: {len(df.columns)}")
+    # df_mitocells.to_csv("/home/aicsuser/serotiny_data/mitocells.csv") 
+    print(f"Number of cells: {len(df_mitocells)}")
+    print(f"Number of columns: {len(df_mitocells.columns)}")
 
     return df_mitocells
 
