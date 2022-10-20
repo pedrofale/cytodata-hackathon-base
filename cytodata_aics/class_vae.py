@@ -1,6 +1,7 @@
 from turtle import forward
 from serotiny.models.vae.image_vae import ImageVAE
 import torch.nn as nn
+import numpy as np
 
 class ImageClassVAE(ImageVAE):
     def __init__(self, *args, **kwargs):
@@ -20,16 +21,21 @@ class ImageClassVAE(ImageVAE):
             z_parts,
             z_parts_params,
             z_composed,
-            loss,
+            vae_loss,
             reconstruction_loss,
             kld_loss,
             kld_per_part,
-        ) = super().forward(self, batch, decode=decode, compute_loss=compute_loss, **kwargs)
+        ) = super().forward(batch, decode=decode, compute_loss=compute_loss, **kwargs)
 
         pred_class = self.classifier(z_parts["image"])
         class_loss = self.class_criterion(pred_class, batch['class'].ravel())
-        loss = class_loss + loss
-
+        if np.random.choice(2):
+            print("class", class_loss)
+            loss = class_loss
+        else:
+            print("vae", vae_loss)
+            loss = vae_loss
+        print(loss, class_loss, vae_loss)
         return (
             x_hat,
             z_parts,
