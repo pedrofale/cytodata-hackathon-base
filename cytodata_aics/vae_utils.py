@@ -339,3 +339,125 @@ def get_all_embeddings(
         df["CellId"] = cell_ids
 
     return df
+
+
+
+class GetClassifications(Callback):
+    """"""
+
+    def __init__(
+        self,
+        x_label: str,
+        id_label: Optional[str] = None,
+    ):
+        """
+        Args:
+            x_label: x_label from datamodule
+            id_field: id_field from datamodule
+        """
+        super().__init__()
+
+        self.x_label = x_label
+        self.id_label = id_label
+        self.cutoff_kld_per_dim = 0
+
+    def on_test_epoch_end(self, trainer: Trainer, pl_module: LightningModule):
+
+        with torch.no_grad():
+
+            classifications = get_all_classifications(
+                trainer.datamodule.train_dataloader(),
+                trainer.datamodule.val_dataloader(),
+                trainer.datamodule.test_dataloader(),
+                pl_module,
+                self.x_label,
+                self.id_label,
+            )
+
+            with tempfile.TemporaryDirectory() as tmp_dir:
+                dest_path = os.path.join(tmp_dir, "classifications.csv")
+                embeddings.to_csv(dest_path)
+
+                mlflow.log_artifact(
+                    local_path=dest_path,
+                    artifact_path="dataframes"
+                )
+
+def get_all_classifications(
+    train_dataloader,
+    val_dataloader,
+    test_dataloader,
+    pl_module: LightningModule,
+    x_label: str,
+    id_label: None,
+):
+
+    all_classifications = []
+    cell_ids = []
+    split = []
+
+    zip_iter = zip(
+        ["train", "val", "test"], [train_dataloader, val_dataloader, test_dataloader]
+    )
+
+    with torch.no_grad():
+        for split_name, dataloader in zip_iter:
+            logger.info(f"Getting classifications for split: {split_name}")
+
+            _bs = dataloader.batch_size
+            _len = len(dataloader) * dataloader.batch_size
+
+            _classifications = np.zeros((_len, 1))
+            _split = np.empty(_len, dtype=object)
+            _ids = None
+
+            id_label = (pl_module.hparams.get("id_label", None) if id_label is None else id_label)
+
+            for index, batch in enumerate(dataloader):
+                if _ids is None:
+                    if id_label is not None and id_label in batch:
+                        _ids = np.empty(_len, dtype=batch[id_label].cpu().numpy().dtype)
+                    else:
+                        _ids = None
+
+                for key in batch.keys():
+                    if not isinstance(batch[key], list):
+                        batch[key] = batch[key].to(pl_module.device)
+            
+                out = pl_module(
+                    batch, decode=True, compute_loss=True)
+                z_parts = out[1]
+                z_composed = out[4]
+                
+                _classifications = out[-2]
+                
+                start = _bs * index
+                end = start + len(_classifications)
+
+                if _ids is not None:
+                    _ids[start:end] = batch[id_label].detach().cpu().squeeze()
+                _split[start:end] = [split_name] * len(_classifications)
+
+            # diff = _bs - len(batch)
+            # if diff > 0:
+            #     # if last batch is smaller discard the difference
+            #     _embeddings = _embeddings[:-diff]
+            #     if _ids is not None:
+            #         _ids = _ids[:-diff]
+            #     _split = _split[:-diff]
+            all_classifications.append(_classifications)
+            cell_ids.append(_ids)
+            split.append(_split)
+
+    all_classifications = np.vstack(all_classifications)        
+    cell_ids = (np.hstack(cell_ids) if cell_ids[0] is not None else None)
+    split = np.hstack(split)
+
+    df = pd.DataFrame(
+        all_classifications,
+    )
+    df["split"] = split
+    if cell_ids is not None:
+        df["CellId"] = cell_ids
+
+    return df
