@@ -3,7 +3,9 @@ from serotiny.models.vae.image_vae import ImageVAE
 import torch.nn as nn
 import torch
 import numpy as np
-
+import pandas as pd
+import os
+import pickle
 
 class ImageClassVAE(ImageVAE):
     def __init__(self,         
@@ -67,6 +69,7 @@ class ImageClassVAE(ImageVAE):
 
         pred_class = self.classifier(z_parts["image"])
         class_loss = self.class_criterion(pred_class, batch['class'].ravel())
+        pred_class = torch.argmax(pred_class,axis=1)
         if np.random.choice(2):
             print("class", class_loss)
             loss = class_loss
@@ -83,4 +86,91 @@ class ImageClassVAE(ImageVAE):
             reconstruction_loss,
             kld_loss,
             kld_per_part,
+            pred_class,
+            batch,
         )
+
+    def _step(self, stage, batch, batch_idx, logger):
+        (
+            x_hat,
+            z_parts,
+            z_parts_params,
+            z_composed,
+            loss,
+            reconstruction_loss,
+            kld_loss,
+            kld_per_part,
+            pred_class,
+            batch,
+        ) = self.forward(batch, decode=True, compute_loss=True)
+
+        results = self.make_results_dict(
+            stage,
+            batch,
+            loss,
+            reconstruction_loss,
+            kld_loss,
+            kld_per_part,
+            z_parts,
+            z_parts_params,
+            z_composed,
+            x_hat,
+            pred_class,
+        )
+
+        self.log_metrics(stage, results, logger, batch[self.hparams.x_label].shape[0])
+
+        return results
+    
+    
+    
+    
+    def make_results_dict(
+        self,
+        stage,
+        batch,
+        loss,
+        reconstruction_loss,
+        kld_loss,
+        kld_per_part,
+        z_parts,
+        z_parts_params,
+        z_composed,
+        x_hat,
+        pred_class,
+    ):
+        results = {
+            "loss": loss,
+            f"{stage}_loss": loss.detach().cpu(),  # for epoch end logging purposes
+            "kld_loss": kld_loss.detach().cpu(),
+        }
+
+        for part, z_comp_part in z_composed.items():
+            results.update(
+                {
+                    f"z_composed/{part}": z_comp_part.detach().cpu(),
+                }
+            )
+
+        for part, recon_part in reconstruction_loss.items():
+            results.update(
+                {
+                    f"reconstruction_loss/{part}": recon_part.detach().cpu(),
+                }
+            )
+
+        for part, z_part in z_parts.items():
+            results.update(
+                {
+                    f"z_parts/{part}": z_part.detach().cpu(),
+                    f"z_parts_params/{part}": z_parts_params[part].detach().cpu(),
+                    f"kld/{part}": kld_per_part[part].detach().float().cpu(),
+                }
+            )
+
+        if self.hparams.id_label is not None:
+            if self.hparams.id_label in batch:
+                ids = batch[self.hparams.id_label].detach().cpu()
+                results.update({self.hparams.id_label: ids, "id": ids})
+
+        return results

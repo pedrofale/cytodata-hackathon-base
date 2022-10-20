@@ -7,3 +7,7 @@
   on_train: False
   on_val: False
   on_test: True
+  
+- _target_: cytodata_aics.vae_utils.GetClassifications
+  x_label: image
+  id_label: id
