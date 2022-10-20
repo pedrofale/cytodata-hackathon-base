@@ -51,9 +51,7 @@ class ImageClassVAE(ImageVAE):
     
     def forward(self, batch, decode=False, compute_loss=False, **kwargs):
         out = super().forward(batch, decode=decode, compute_loss=compute_loss, **kwargs)
-        print(out)
         if len(out) == 2:
-            print(out[0]['image'].shape)
             return out
         
         (
