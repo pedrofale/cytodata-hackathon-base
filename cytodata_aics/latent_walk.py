@@ -234,11 +234,11 @@ def compute_projections(
             #     plot_limits = [-S, S, -S, S]
             else:
                 img = decoder(z_inf).cpu()
-                img = np.array(img[0,0,:,:,:])
-                plot_limits = [0, img.shape[1], 0, img.shape[2]]
+                img = np.array(img[0,:,:,:,:]) # channel, z, y, x
+                plot_limits = [0, img[0].shape[1], 0, img[0].shape[2]]
 
             if compute_features:
-                features = get_basic_features(img)
+                features = get_basic_features(img[0])
                 # features['shapemode'] = rank
                 features["sigma"] = value
                 features[f"sigma_{rank+1}"] = value
@@ -251,7 +251,8 @@ def compute_projections(
 
             for proj in proj_list:
                 plt.style.use("dark_background")
-                ax_array[proj, value_index].imshow(img.max(proj), cmap="gray")
+                # 'bf', 'dna', 'membrane', 'structure'
+                ax_array[proj, value_index].imshow(np.stack([img[0].max(proj), img[1].max(proj), img[2].max(proj)], axis=2))
                 ax_array[proj, value_index].set_title(
                     f"{value}" r"$\sigma$", fontsize=14
                 )
