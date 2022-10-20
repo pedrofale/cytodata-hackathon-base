@@ -1,6 +1,6 @@
 _target_: cytodata_aics.class_vae.ImageClassVAE
 latent_dim: 512
-in_channels: 1
+in_channels: 7
 hidden_channels: [2, 2, 2, 2]
 max_pool_layers: [2]
 input_dims: [32, 60, 94] # level 2 image shape
