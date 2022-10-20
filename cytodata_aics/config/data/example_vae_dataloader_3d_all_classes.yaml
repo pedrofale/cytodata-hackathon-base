@@ -16,7 +16,7 @@ loaders:
   image:
     _target_: serotiny.io.dataframe.loaders.LoadImage
     column: 3d_image
-    select_channels: ['dna']
+    select_channels: ['bf', 'dna', 'membrane', 'structure', 'dna_segmentation', 'membrane_segmentation', 'struct_segmentation_roof']
     ome_zarr_level: 2
     unsqueeze_first_dim: true
     dtype: float32
